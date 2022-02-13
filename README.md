@@ -1,2 +1,2 @@
 # milestoneTwo
-wallet api is created and  jwt authentication is still missing
+wallet api is created using spring boot and further more the kafka jwt authentication
