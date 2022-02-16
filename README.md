@@ -1,2 +1,4 @@
 # milestoneTwo
-wallet api is created using spring boot and further more the kafka jwt authentication
+wallet api
+Logging done after log4j 
+kafka jwt authentication
