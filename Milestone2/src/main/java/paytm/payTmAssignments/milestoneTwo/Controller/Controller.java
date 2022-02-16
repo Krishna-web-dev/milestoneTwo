@@ -1,5 +1,7 @@
 package paytm.payTmAssignments.milestoneTwo.Controller;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import paytm.payTmAssignments.milestoneTwo.Dto.TransactionSummaryDataTransferObject;
 import paytm.payTmAssignments.milestoneTwo.Dto.WalletDataTransferObject;
 import paytm.payTmAssignments.milestoneTwo.Kafka.Producer;
@@ -25,6 +27,8 @@ import java.util.NoSuchElementException;
 public class Controller {
 
 
+	Logger logger = LoggerFactory.getLogger(Controller.class);
+
 	@Autowired
 	Producer producer;
 	@Autowired
@@ -40,6 +44,7 @@ public class Controller {
 
 	@RequestMapping(value="/post",method = RequestMethod.GET)
 	public void sendMessage(@RequestParam("mobilenumber") String msg) {
+		logger.info("sending message to " + msg + " created ");
 		producer.publishToTopic(msg);
 	}
 
@@ -47,6 +52,8 @@ public class Controller {
 
 	@GetMapping("/wallet")
 	public List<WalletDataTransferObject> list() {
+		logger.info("all wallet are being listed on the screen ");
+
 		return service.listAll_wallet();
 	}
 
@@ -57,14 +64,19 @@ public class Controller {
 
 		//displaying if user makes invalid entry then simply exit with message
 		if(service.containsLetters(walletDTO.getMobilenumber()) ||
-				service.containsLetters(walletDTO.getAmount()))
-			return new ResponseEntity<>("Enter correct details",HttpStatus.BAD_REQUEST);
-
+				service.containsLetters(walletDTO.getAmount())) {
+			logger.warn("WRONG DETAILS ENTERED");
+			return new ResponseEntity<>("Enter correct details", HttpStatus.BAD_REQUEST);
+		}
 
 		//displaying if user make duplicate entry
-		if (service.checkforDuplicateEntry(walletDTO))
-			return new ResponseEntity<>("Wallet already present",HttpStatus.MULTI_STATUS);
-		//producer.publishToTopic2("User created");
+		if (service.checkforDuplicateEntry(walletDTO)) {
+			logger.warn("Wallet Already Present");
+
+			return new ResponseEntity<>("Wallet already present", HttpStatus.MULTI_STATUS);
+			//producer.publishToTopic2("User created");
+		}
+		logger.info("wallet succesfully saved");
 
 		service.save_wallet(walletDTO);
 
@@ -83,13 +95,17 @@ public class Controller {
 		//displaying if user makes invalid entry then simply exit with message
 		if(service.containsLetters(payer_phone_number)
 				|| service.containsLetters(payee_phone_number)
-				|| service.containsLetters(amount))
-			return new ResponseEntity<String>("Enter correct details",HttpStatus.BAD_REQUEST);
+				|| service.containsLetters(amount)) {
+			logger.warn("WRONG DETAILS ENTERED");
 
+			return new ResponseEntity<String>("Enter correct details", HttpStatus.BAD_REQUEST);
+		}
 		//checking funds
-		if(service.checkForSufficientAmount(payer_phone_number,amount))
-			return new ResponseEntity<String>("Insufficient Funds",HttpStatus.BAD_REQUEST);
+		if(service.checkForSufficientAmount(payer_phone_number,amount)) {
+			logger.warn("Insufficient Funds");
 
+			return new ResponseEntity<String>("Insufficient Funds", HttpStatus.BAD_REQUEST);
+		}
 		service.deductAmount(payer_phone_number,amount); //deducting amount of payer
 		service.addAmount(payee_phone_number,amount);   //adding amount to payee
 
@@ -97,10 +113,14 @@ public class Controller {
 		String temp="Transaction Success\nTransaction ID:"+t_d;
 
 		//saving transcation by transx_id
+		logger.info("Transaction saved to the transaction summary");
+
 		service.saveToTransactionSummary(payer_phone_number,payee_phone_number,amount,t_d);
 
 		//pushing event to Kafka
-		//producer.publishToTopic(temp);
+		producer.publishToTopic(temp);
+		logger.info("Pushing event to Kafa");
+
 
 		return new ResponseEntity<String>(temp,HttpStatus.ACCEPTED);
 
@@ -110,13 +130,20 @@ public class Controller {
 	@RequestMapping(value="/transaction",method = RequestMethod.GET)
 	public List<TransactionSummaryDataTransferObject> getTransactionSummary(@RequestParam("transactionID") String tranx_id)
 	{
+
+		logger.info("getting transaction id " + tranx_id);
+
 		System.out.println("getting tranx_id"+tranx_id);
+
+		logger.info("transaction succesfully saved");
+
 		return service.get_currentTransaction(tranx_id);
 	}
 
 	@RequestMapping(value="/all_transactions",method = RequestMethod.GET)
 	public List<List<?>> get_transactions(@RequestBody String mobilenumber)
 	{
+		logger.info("all transcations are listed on the screen");
 
 		return service.get_All_transactions(mobilenumber);
 	}
@@ -132,6 +159,8 @@ public class Controller {
 					)
 			);
 		} catch (BadCredentialsException e) {
+			logger.warn("INVALID_CREDENTIALS");
+
 			throw new Exception("INVALID_CREDENTIALS", e);
 		}
 
@@ -140,6 +169,9 @@ public class Controller {
 
 		final String token =
 				jwtUtility.generateToken(userDetails);
+
+		logger.info("token successfully returned to jwt ");
+
 
 		return  new JwtResponse(token);
 	}
@@ -152,28 +184,43 @@ public class Controller {
 			WalletDataTransferObject existProduct = service.get_wallet(id);
 
 			service.save_wallet(walletDTO);
+			logger.info("updation successfull");
+
 			return new ResponseEntity<>(HttpStatus.ACCEPTED);
 		}
 		catch (NoSuchElementException e) {
+			logger.warn("NO such wallet id found");
+
 			return new ResponseEntity<>(HttpStatus.NOT_FOUND);
 		}
 		catch (NumberFormatException e) {
+			logger.warn("Invalid number format enter correct format ");
+
 			return new ResponseEntity<String>(HttpStatus.BAD_REQUEST);
 		}
 	}
 
 	@DeleteMapping("/wallet/{id}")
 	public void delete(@PathVariable String id) {
+		logger.warn("wallet with id = " + id + " succesfullly DELETED");
+
 		service.delete(id);
 	}
 
 	@GetMapping("/wallet/{id}")
 	public ResponseEntity<WalletDataTransferObject> get(@PathVariable String id) {
 		try {
+			logger.info("using service layer get the wallet id ");
+
 			WalletDataTransferObject user = service.get_wallet(id);
 
+			logger.info("wallet succesfully printed ");
+
 			return new ResponseEntity<WalletDataTransferObject>(user, HttpStatus.OK);
+
 		} catch (NoSuchElementException e) {
+			logger.warn("INVALID_CREDENTIALS no such wallet exist");
+
 			return new ResponseEntity<WalletDataTransferObject>(HttpStatus.NOT_FOUND);
 		}
 	}
