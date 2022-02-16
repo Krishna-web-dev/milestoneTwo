@@ -1,6 +1,8 @@
 package paytm.payTmAssignments.milestoneTwo.Service;
 
 import org.modelmapper.ModelMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -29,6 +31,7 @@ import java.util.stream.Collectors;
 @Service
 @Transactional
 public class WalletService implements UserDetailsService {
+    Logger logger = LoggerFactory.getLogger(WalletService.class);
 
 
     @Autowired
@@ -36,9 +39,9 @@ public class WalletService implements UserDetailsService {
     @Autowired
     private TransactionRepository trans_repo;
     @Autowired
-    private SendersRepository sendersRepository;
+    private SenderUserRepository sendersRepository;
     @Autowired
-    private ReceiversRepository receiversRepository;
+    private RecievingUserRepository receiversRepository;
     @Autowired
     private UserRepository userRepository;
 
@@ -97,13 +100,14 @@ public class WalletService implements UserDetailsService {
     }
 
 
-    public List<List<?>> get_All_transactions(String mobilenumber) {
-        List<Senders> sendersList=  sendersRepository.getByUserPhonenumber(mobilenumber);
-        List<Receivers> receiversList= receiversRepository.getByUserPhonenumber(mobilenumber);
+    public List<List<?>> get_All_transactions(String payernumber) {
+        List<Senders> sendersList=  sendersRepository.getByUserPhonenumber(payernumber);
+        List<Receivers> receiversList= receiversRepository.getByUserPhonenumber(payernumber);
 
         List<List<?>> list = new ArrayList<>();
         list.add(sendersList);
         list.add(receiversList);
+        System.out.println(list + "transaction list");
         return list;
     }
 
@@ -128,15 +132,21 @@ public class WalletService implements UserDetailsService {
 
 
     public Transaction_summary save_transaction(TransactionSummaryDataTransferObject transactionSummaryDataTransferObject) {
+
+        logger.info("transaction is saved");
+
         return trans_repo.save(convertDtoToEntity_transaction(transactionSummaryDataTransferObject));
     }
 
     public Senders SavingToDbSender(SendersDataTransferObject sendersDTO) {
+        logger.info("transaction is saved to database sender");
 
         return sendersRepository.save(convertDtoToEntity_senders(sendersDTO));
 
     }
     public Receivers SavingToDbReceivers(ReceiversDataTransferObject receiversDTO) {
+        logger.info("transaction is saved from the reciever side ");
+
         return receiversRepository.save(convertDtoToEntity_receivers(receiversDTO));
     }
 
@@ -151,7 +161,10 @@ public class WalletService implements UserDetailsService {
 
     }
     public boolean checkForSufficientAmount(String payer_mobile_number,String amount){
-        System.out.println("checking="+wallet_repo.getByAmount(payer_mobile_number));
+
+        logger.info("checking="+wallet_repo.getByAmount(payer_mobile_number));
+
+       // System.out.println("checking="+wallet_repo.getByAmount(payer_mobile_number));
         return (Integer.parseInt(amount) > Integer.parseInt(wallet_repo.getByAmount(payer_mobile_number)));
        // return true;
     }
